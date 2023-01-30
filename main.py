@@ -19,41 +19,58 @@ intents.messages = True
 intents.message_content = True
 
 servers = []
+mainChannel = 12345
 
 bot = commands.Bot(command_prefix= commands.when_mentioned_or("!"), intents=intents, case_insensitive=True) #, intents=intents
 bot.remove_command('help')
 
 import asyncio
-from collections import defaultdict
-from datetime import datetime, timedelta
-
-# A dictionary to store the number of pings/mentions for each user and role
-ping_counts = defaultdict(int)
-
-# A dictionary to store the time of the last ping/mention for each user and role
-last_ping_time = defaultdict(lambda: datetime.min)
 
 @bot.event
 async def on_message(message):
-    # Ignore messages from bots
-    if message.author.bot:
-        return
-
-    # Check if the message contains pings/mentions
     if message.mentions:
-        # Increment the ping counts for all the users and roles that are mentioned
-        for mention in message.mentions:
-            ping_counts[mention.id] += 1
-            last_ping_time[mention.id] = message.created_at
-
-        # Check if any of the users or roles have been pinged/mentioned more than 6 times within 3 seconds
-        for mention in message.mentions:
-            if (ping_counts[mention.id] > 6 and
-                    message.created_at - last_ping_time[mention.id] < timedelta(seconds=3)):
-                # Send a message to the channel warning the user about excessive pinging/mentioning
-                await message.channel.send("Please do not ping/mention other users or roles excessively.")
-        
+        mentions = [user for user in message.mentions if not user.bot]
+        if len(mentions) >= 6:
+            invite = await guild.create_invite(max_uses=100, temporary=True)
+            emergency_ping_role = nextcord.utils.get(message.guild.roles, name='emergencyPing')
+            embed = nextcord.Embed(
+                title=f"{message.author} was caught attempting to raid.",
+                description = f"{message.author} / {message.author.id} / {message.author.mention} was caught attempting to raid. They were timed out for 1 day.",
+            )
+            await message.channel.send(f'<&{emergency_ping_role}> was caught spam pinging.', embed=embed)
+            await message.author.edit(timeout=86400, reason="Caught spam pinging/spam pinging a role. Timed out for 1 day")
+            channel = bot.get_channel(id=int(mainChannel))
+            embed = nextcord.Embed(
+                title=f"{message.author} was caught attempting to raid in ({message.guild.name})[{invite}].", # get a invite to the server
+            )
+            
     await bot.process_commands(message)
+
+
+@client.command()
+async def createRole(ctx):
+    guild = ctx.guild
+    role = nextcord.utils.get(guild.roles, name='emergencyPing')
+    if not role:
+        role = await guild.create_role(name='emergencyPing',
+                                       color=nextcord.Color.red(),
+                                       mentionable=False)
+        await ctx.reply(f'The role "emergencyPing" has been created. Rank this to users who should be notified if this bot detects if there is a raid.')
+    else:
+        await ctx.reply('The role "emergencyPing" already exists.')
+
+@bot.slash_command(guild_ids=[servers], description="Create the role 'emergencyPing' which will be pinged if the bot detects a raid.")
+async def createRole(interaction : Interaction):
+    guild = interaction.guild
+    role = nextcord.utils.get(guild.roles, name='emergencyPing')
+    if not role:
+        role = await guild.create_role(name='emergencyPing',
+                                       color=nextcord.Color.red(),
+                                       mentionable=False)
+        await interaction.send(f'The role "emergencyPing" has been created. Rank this to users who should be notified if this bot detects if there is a raid.')
+    else:
+        await interaction.send('The role "emergencyPing" already exists.')
+
 
 
 @bot.event
