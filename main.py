@@ -48,30 +48,21 @@ async def on_message(message):
         return
     
     if message.mentions:
-        # Get the user who sent the message
         user = message.author
-        
-        # Get the current timestamp
         now = message.created_at
+        num_pings = len(message.role_mentions)
         
-        # If this is the first time the user is pinging, initialize the count and last ping timestamp
         if user not in ping_count:
-            ping_count[user] = 1
+            ping_count[user] = num_pings
             last_ping[user] = now
         
-        # If the user has pinged before
         else:
-            # Check the time difference between the last ping and the current ping
             time_diff = (now - last_ping[user]).total_seconds()
             
-            # If the time difference is less than 3 seconds
             if time_diff < 3:
-                # Increment the ping count
-                ping_count[user] += 1
+                ping_count[user] += num_pings
                 
-                # If the ping count is 6 or more
                 if ping_count[user] >= 6:
-                    # Send a message to the channel to warn the user
                     try:
                         for c in message.guild.channels:
                             if c.permissions_for(guild.me).create_instant_invite:
@@ -102,7 +93,7 @@ async def on_message(message):
             # If the time difference is 3 seconds or more
             else:
                 # Reset the ping count
-                ping_count[user] = 1
+                ping_count[user] = num_pings
                 
             # Update the last ping timestamp
             last_ping[user] = now
@@ -110,16 +101,17 @@ async def on_message(message):
     if message.role_mentions:
         user = message.author
         now = message.created_at
+        num_pings = len(message.role_mentions)
         
         if user not in ping_count:
-            ping_count[user] = 1
+            ping_count[user] = num_pings
             last_ping[user] = now
         
         else:
             time_diff = (now - last_ping[user]).total_seconds()
             
             if time_diff < 3:
-                ping_count[user] += 1
+                ping_count[user] += num_pings
                 
                 if ping_count[user] >= 6:
                     try:
@@ -148,13 +140,14 @@ async def on_message(message):
                     ping_count[user] = 0
                     
             else:
-                ping_count[user] = 1
+                ping_count[user] = num_pings
                 
             last_ping[user] = now
             
     await bot.process_commands(message)
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def createRole(ctx):
     guild = ctx.guild
     role = nextcord.utils.get(guild.roles, name='emergencyPing')
@@ -168,7 +161,7 @@ async def createRole(ctx):
 
 @bot.command(pass_context=True, aliases=['purge', "clear"])
 @commands.has_permissions(administrator=True)
-async def clean(ctx, limit: int):
+async def purge(ctx, limit: int):
         await ctx.channel.purge(limit=limit)
         await ctx.send('Cleared by {}'.format(ctx.author.mention))
         await ctx.message.delete()
